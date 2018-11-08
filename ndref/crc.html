@@ -1,0 +1,156 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<!-- saved from url=(0044)https://www3.nd.edu/~mquevill/ndref/crc.html -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+
+<title>CRC OpenAFS Setup</title>
+
+</head>
+
+<body>
+
+<h1><a id="CRC">AFS Setup for CRC account on Ubuntu/Linux Mint/etc.</a></h1>
+	<p>The Ethernet in Fitzpatrick Hall is not considered part of Notre
+	Dame's campus, therefore banner services and mounting other drives
+	will not work properly (without a VPN)! ESC says this cannot be
+	addressed at the current time. Maybe, after Fitzpatrick Hall
+	undergoes a massive network overhaul, it will be fixed. :shrug:</p>
+
+	<ol start="0">
+
+		<li>[Optional] Add the OpenAFS stable PPA for better kernel support.<br>
+		<pre><code>
+sudo add-apt-repository ppa:openafs/stable
+sudo apt-get update
+		</code></pre>
+		</li>
+
+		<li>Install the following packages:<br>
+		<pre><code>
+sudo apt-get install csh openafs-client openafs-fileserver openafs-krb5 libpam-afs-session libpam-krb5 krb5-user
+		</code></pre>
+		When installing and configuring, it will ask for some default settings. The default Kerberos version 5 realm is <code>CRC.ND.EDU</code>, the workstation belongs to the AFS cell <code>crc.nd.edu</code>, and the CRC suggests an AFS cache size of 3&nbsp;GB (3000000&nbsp;kB).
+		</li><br>
+
+		<li>Switch to root user, as most commands require this.<br>
+		<pre><code>
+sudo su
+		</code></pre>
+		</li>
+
+		<li>Set default AFS directory (default setup, not Transarc).<br>
+		<pre><code>
+AFS=/usr/local/etc/openafs
+		</code></pre>
+		</li>
+
+		<li>Add configuration files.<br>
+		<pre><code>
+mkdir -p ${AFS}
+echo "crc.nd.edu" &gt; ${AFS}/ThisCell
+echo "crc.nd.edu     #University of Notre Dame - Center for Research Computing
+129.74.85.34   #afsdb1.crc.nd.edu
+129.74.85.35   #afsdb2.crc.nd.edu
+129.74.85.36   #afsdb3.crc.nd.edu" &gt; ${AFS}/CellServDB
+		</code></pre>
+		</li>
+
+		<li>Add the group "campus".<br>
+		<pre><code>
+CRCGID=1313
+groupadd -g ${CRCGID} campus
+		</code></pre>
+		</li>
+
+		<li>Find the following values in <code>/afs/crc.nd.edu/common/etc/passwd</code> and save the values in the following variables.<br>(format <code>CRCUSER:x:UID:GID:CRCNAME:home_path:CRCSHELL</code>)<br>
+		<pre><code>
+CRCUSER=
+CRCUID=
+CRCNAME=
+CRCSHELL=
+		</code></pre>
+		</li>
+
+		<li>Add the user. (If user is not added to group, use the second command, as well.)<br>
+		<pre><code>
+useradd -u ${CRCUID} -g ${CRCGID} -c "${CRCNAME}" -d /afs/crc.nd.edu/user/${CRCUSER:0:1}/${CRCUSER} -s ${CRCSHELL} ${CRCUSER}
+usermod -aG ${CRCGID} ${CRCUSER}
+		</code></pre>
+		</li>
+
+		<li>Set up configuration for Kerberos tokens. Copy the following file to <code>/etc/krb5.conf</code>, overwriting the <code>ATHENA.MIT.EDU</code> defaults.<br>
+		<pre><code>
+#Krb5.conf v1.0
+[appdefaults]
+	debug = false
+	forward = true
+	forwardable = true
+	ticket_lifetime = 30d
+	renew_lifetime = 30d
+
+[libdefaults]
+	forwardable = true
+	dns_lookup_realm = false
+	dns_lookup_kdc = true
+	default_realm = CRC.ND.EDU
+	ticket_lifetime = 30d
+	renew_lifetime = 30d
+	default_tkt_enctypes = aes256-cts-hmac-sha1-96 des3-hmac-sha1 des-cbc-crc
+	default_tgs_enctypes = aes256-cts-hmac-sha1-96 des3-hmac-sha1 des-cbc-crc
+	allow_weak_crypto = yes
+
+[realms]
+
+	CRC.ND.EDU = {
+		kdc = kerberos.crc.nd.edu:88
+		kdc = kerberos-1.crc.nd.edu:88
+		kdc = kerberos-2.crc.nd.edu:88
+		admin_server = kerberos.crc.nd.edu:749
+	}
+
+	ND.EDU = {
+		kdc = kerberos.nd.edu:88
+		kdc = kerberos-1.nd.edu:88
+		kdc = kerberos-2.nd.edu:88
+		admin_server = kerberos.nd.edu:749
+	}
+
+[domain_realm]
+	.crc.nd.edu = CRC.ND.EDU
+	.helios.nd.edu = ND.EDU
+		</code></pre>
+		</li>
+
+		<li>Activate the AFS cell. (Will need to enter user's password with <code>kinit</code>!)<br>
+		<pre><code>
+kinit ${CRCUSER}@CRC.ND.EDU<br>
+/etc/init.d/openafs-client force-start
+aklog
+		</code></pre>
+		</li>
+
+		<li>Change startup files.<br>
+		<pre><code>
+rm /opt/crc
+ln -s /afs/crc.nd.edu/x86_64_linux /opt/crc
+rm /usr/local/Startup
+ln -s /afs/crc.nd.edu/x86_64_linux/usr/local/Startup /usr/local/Startup
+		</code></pre>
+		</li>
+
+		<li>[Optional] Add user to sudo group.<br>
+		<pre><code>
+usermod -aG sudo ${CRCUSER}
+		</code></pre>
+		</li>
+
+		<li>[Optional] Fix some root GUI issues.<br>
+		<pre><code>
+echo "xhost +local:" &gt;&gt; /afs/crc.nd.edu/user/${CRCUSER:0:1}/${CRCUSER}/.profile
+		</code></pre>
+		</li>
+
+	</ol>
+	<p>If there are any issues with these instructions, please <a href="mailto:mquevill+crc@nd.edu">contact me</a>.</p>
+
+</body></html>
