@@ -8,15 +8,18 @@
 <body>
 
 <h1><a id="CRC">AFS Setup for CRC account on Ubuntu/Linux Mint/etc.</a></h1>
-	<p>The Ethernet in Fitzpatrick Hall is not considered part of Notre
-	Dame's campus, therefore banner services and mounting other drives
-	will not work properly (without a VPN)! ESC says this cannot be
-	addressed at the current time. Maybe, after Fitzpatrick Hall
-	undergoes a massive network overhaul, it will be fixed. :shrug:</p>
 
-	<ol start="0">
+	<ol start="-1">
 
-		<li>[Optional] Add the OpenAFS stable PPA for better kernel support.<br>
+		<li>[Recommended] Update packages (especially if a new installation).<br>
+		<pre><code>
+sudo apt-get update
+sudo apt-get upgrade
+sudo apt-get dist-upgrade
+		</code></pre>
+		</li>
+
+		<li>[Recommended] Add the OpenAFS stable PPA for better kernel support.<br>
 		<pre><code>
 sudo add-apt-repository ppa:openafs/stable
 sudo apt-get update
@@ -25,7 +28,7 @@ sudo apt-get update
 
 		<li>Install the following packages:<br>
 		<pre><code>
-sudo apt-get install csh openafs-client openafs-fileserver openafs-krb5 libpam-afs-session libpam-krb5 krb5-user
+sudo apt-get install csh libpam-krb5 krb5-user openafs-client openafs-fileserver openafs-krb5 openafs-modules-dkms libpam-afs-session
 		</code></pre>
 		When installing and configuring, it will ask for some default settings. The default Kerberos version 5 realm is <code>CRC.ND.EDU</code>, the workstation belongs to the AFS cell <code>crc.nd.edu</code>, and the CRC suggests an AFS cache size of 3&nbsp;GB (3000000&nbsp;kB).
 		</li><br>
